@@ -1,11 +1,10 @@
 """
-AWS Lambda Bird Detection Package
+AWS Lambda Bird Detection Package (ConvDetector Specialized)
 
-A minimal package for deploying bird anomaly detection models on AWS Lambda.
+A minimal package for deploying ConvDetector on AWS Lambda.
 """
 
 from .detectors.convae_detector import ConvDetector
-from .detectors.simple_detector import SimpleDetector
 
 __version__ = "1.0.0"
-__all__ = ["ConvDetector", "SimpleDetector"] 
+__all__ = ["ConvDetector"] 

@@ -1,5 +1,5 @@
 """
-AWS Lambda function handler for bird anomaly detection.
+AWS Lambda function handler for bird anomaly detection (ConvDetector).
 """
 
 import json
@@ -9,10 +9,10 @@ import requests
 from PIL import Image
 from io import BytesIO
 
-from bird_detection import ConvDetector as AnomalyDetector
+from bird_detection import ConvDetector
 
 
-def send_telegram_notification(image_url, detector_type="conv"):
+def send_telegram_notification(image_url, detector_type="ConvDetector"):
     """Send Telegram notification when anomaly is detected."""
     try:
         telegram_bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
@@ -48,7 +48,7 @@ def send_telegram_notification(image_url, detector_type="conv"):
 
 def lambda_handler(event, context):
     """
-    AWS Lambda handler for bird anomaly detection.
+    AWS Lambda handler for bird anomaly detection using ConvDetector.
     
     Expected event format:
     {
@@ -79,8 +79,8 @@ def lambda_handler(event, context):
         bucket, key = parse_s3_url(image_url)
         image = load_image_from_s3(s3, bucket, key)
         
-        # Initialize detector
-        detector = AnomalyDetector(config, s3)
+        # Initialize ConvDetector
+        detector = ConvDetector(config, s3)
         
         # Predict anomaly
         is_anomaly = detector.predict(image)
@@ -93,6 +93,7 @@ def lambda_handler(event, context):
         # Get additional info if available
         result = {
             'anomaly_detected': is_anomaly,
+            'detector_type': 'conv',
             'image_url': image_url,
             'notification_sent': notification_sent
         }
