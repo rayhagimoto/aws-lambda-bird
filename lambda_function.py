@@ -5,10 +5,45 @@ AWS Lambda function handler for bird anomaly detection.
 import json
 import boto3
 import os
+import requests
 from PIL import Image
 from io import BytesIO
 
-from bird_detection import ConvDetector, SimpleDetector
+from bird_detection import ConvDetector as AnomalyDetector
+
+
+def send_telegram_notification(image_url, detector_type="conv"):
+    """Send Telegram notification when anomaly is detected."""
+    try:
+        telegram_bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+        telegram_chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+        
+        if not telegram_bot_token or not telegram_chat_id:
+            print("Warning: Telegram credentials not configured")
+            return False
+        
+        text = f"🚨 Anomalous image detected!\n\nImage: {image_url}\nDetector: {detector_type}"
+        
+        response = requests.post(
+            f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage",
+            data={
+                "chat_id": telegram_chat_id, 
+                "text": text,
+                "parse_mode": "HTML"
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            print(f"Telegram notification sent successfully")
+            return True
+        else:
+            print(f"Failed to send Telegram notification: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"Error sending Telegram notification: {e}")
+        return False
 
 
 def lambda_handler(event, context):
@@ -18,7 +53,6 @@ def lambda_handler(event, context):
     Expected event format:
     {
         "image_url": "s3://bucket-name/path/to/image.jpg",
-        "detector_type": "conv" or "simple",
         "config": {
             "bucket_name": "your-bucket",
             "state_folder": "bird-detection-state",
@@ -30,7 +64,6 @@ def lambda_handler(event, context):
     try:
         # Parse event
         image_url = event.get('image_url')
-        detector_type = event.get('detector_type', 'conv')
         config = event.get('config', {})
         
         if not image_url:
@@ -47,19 +80,21 @@ def lambda_handler(event, context):
         image = load_image_from_s3(s3, bucket, key)
         
         # Initialize detector
-        if detector_type.lower() == 'simple':
-            detector = SimpleDetector(config, s3)
-        else:
-            detector = ConvDetector(config, s3)
+        detector = AnomalyDetector(config, s3)
         
         # Predict anomaly
         is_anomaly = detector.predict(image)
         
+        # Send Telegram notification if anomaly detected
+        notification_sent = False
+        if is_anomaly:
+            notification_sent = send_telegram_notification(image_url, "ConvDetector")
+        
         # Get additional info if available
         result = {
             'anomaly_detected': is_anomaly,
-            'detector_type': detector_type,
-            'image_url': image_url
+            'image_url': image_url,
+            'notification_sent': notification_sent
         }
         
         # Add state information for ConvDetector
@@ -115,7 +150,6 @@ if __name__ == "__main__":
     # Test event
     test_event = {
         "image_url": "s3://your-bucket/test-image.jpg",
-        "detector_type": "conv",
         "config": {
             "bucket_name": "your-bucket",
             "state_folder": "bird-detection-state",

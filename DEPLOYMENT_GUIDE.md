@@ -10,6 +10,7 @@ This guide explains how to deploy the bird detection models on AWS Lambda.
 - Python 3.9+ runtime
 - S3 bucket for model state storage
 - IAM permissions for Lambda and S3
+- Telegram bot token and chat ID (for notifications)
 
 ## Package Structure
 
@@ -59,7 +60,9 @@ aws lambda update-function-configuration \
   --environment Variables='{
     "BUCKET_NAME": "your-bucket-name",
     "STATE_FOLDER": "bird-detection-state",
-    "ENABLE_TRAINING": "true"
+    "ENABLE_TRAINING": "true",
+    "TELEGRAM_BOT_TOKEN": "your-telegram-bot-token",
+    "TELEGRAM_CHAT_ID": "your-telegram-chat-id"
   }'
 ```
 
@@ -87,6 +90,25 @@ aws lambda invoke \
 - `STATE_FOLDER`: Folder within bucket for state files
 - `ENABLE_TRAINING`: Enable/disable model training (true/false)
 - `INCUBATION_PERIOD`: Number of images before anomaly detection starts
+- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token
+- `TELEGRAM_CHAT_ID`: Your Telegram chat ID
+
+### Telegram Setup
+
+1. **Create a Telegram Bot:**
+   - Message @BotFather on Telegram
+   - Use `/newbot` command
+   - Follow instructions to create bot
+   - Save the bot token
+
+2. **Get Chat ID:**
+   - Message your bot
+   - Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - Find your chat ID in the response
+
+3. **Configure Lambda:**
+   - Set `TELEGRAM_BOT_TOKEN` environment variable
+   - Set `TELEGRAM_CHAT_ID` environment variable
 
 ### S3 State Files
 
@@ -107,6 +129,7 @@ The detector maintains state in S3:
 - CloudWatch Logs for debugging
 - CloudWatch Metrics for performance monitoring
 - S3 access logs for state file tracking
+- Telegram notifications for anomaly alerts
 
 ## Troubleshooting
 
@@ -116,6 +139,7 @@ The detector maintains state in S3:
 2. **Timeout Errors**: Increase timeout or optimize model inference
 3. **S3 Permission Errors**: Check IAM role permissions
 4. **Import Errors**: Ensure all dependencies are included in package
+5. **Telegram Notification Errors**: Check bot token and chat ID
 
 ### Debug Mode
 
@@ -128,4 +152,13 @@ DEBUG=true
 
 - Use Lambda Provisioned Concurrency for consistent performance
 - Optimize S3 storage class for state files
-- Monitor CloudWatch metrics for usage patterns 
+- Monitor CloudWatch metrics for usage patterns
+
+## Notification Features
+
+The Lambda function automatically sends Telegram notifications when anomalies are detected:
+
+- **Message Format**: Includes anomaly alert, image URL, and detector type
+- **Error Handling**: Graceful fallback if Telegram credentials are missing
+- **Timeout Protection**: 10-second timeout for API calls
+- **Status Tracking**: Returns notification status in response 
